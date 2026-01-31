@@ -337,21 +337,19 @@ class BotPlayer:
         elif self.state == TRASH:
             self.do_trash(controller, bot_id, bx, by)
 
-        # Control second bot (simple back-and-forth movement)
-        if len(my_bots) > 1:
-            self.my_bot_id = my_bots[1]
-            bot_id = self.my_bot_id
+        self.my_bot_id = my_bots[1]
+        bot_id = self.my_bot_id
 
-            bot_info = controller.get_bot_state(bot_id)
-            bx, by = bot_info['x'], bot_info['y']
+        bot_info = controller.get_bot_state(bot_id)
+        bx, by = bot_info['x'], bot_info['y']
 
-            dy = 0
-            if controller.get_turn() % 2 == 0:
-                dx = 1
-            else:
-                dx = -1
+        dy = 0
+        if controller.get_turn() % 2 == 0:
+            dx = 1
+        else:
+            dx = -1
 
-            nx, ny = bx + dx, by + dy
-            if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
-                controller.move(bot_id, dx, dy)
-                return
+        nx, ny = bx + dx, by + dy
+        if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
+            controller.move(bot_id, dx, dy)
+            return
