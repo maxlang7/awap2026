@@ -2,6 +2,8 @@ import random
 from collections import deque
 from typing import Tuple, Optional, List
 
+import time
+
 from game_constants import Team, TileType, FoodType, ShopCosts
 from robot_controller import RobotController
 from item import Pan, Plate, Food
@@ -69,6 +71,8 @@ class BotPlayer:
         return best_pos
 
     def play_turn(self, controller: RobotController):
+        # For testing
+        time.sleep(0.3)
         my_bots = controller.get_team_bot_ids()
         if not my_bots: return
 
@@ -232,6 +236,8 @@ class BotPlayer:
             if self.move_towards(controller, bot_id, tx, ty):
                 if controller.trash(bot_id, tx, ty):
                     self.state = 2 #restart
+                    
+        
         for i in range(1, len(my_bots)):
             self.my_bot_id = my_bots[i]
             bot_id = self.my_bot_id

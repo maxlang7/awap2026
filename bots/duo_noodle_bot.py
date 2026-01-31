@@ -9,14 +9,14 @@ from item import Pan, Plate, Food
 class BotPlayer:
     def __init__(self, map_copy):
         self.map = map_copy
-        self.assembly_counter = None 
+        self.assembly_counter = None
         self.cooker_loc = None
         self.my_bot_id = None
-        
+
         self.state = 0
 
     def get_bfs_path(self, controller: RobotController, start: Tuple[int, int], target_predicate) -> Optional[Tuple[int, int]]:
-        queue = deque([(start, [])]) 
+        queue = deque([(start, [])])
         visited = set([start])
         w, h = self.map.width, self.map.height
 
@@ -24,8 +24,8 @@ class BotPlayer:
             (curr_x, curr_y), path = queue.popleft()
             tile = controller.get_tile(controller.get_team(), curr_x, curr_y)
             if target_predicate(curr_x, curr_y, tile):
-                if not path: return (0, 0) 
-                return path[0] 
+                if not path: return (0, 0)
+                return path[0]
 
             for dx in [0, -1, 1]:
                 for dy in [0, -1, 1]:
@@ -46,8 +46,8 @@ class BotPlayer:
         step = self.get_bfs_path(controller, (bx, by), is_adjacent_to_target)
         if step and (step[0] != 0 or step[1] != 0):
             controller.move(bot_id, step[0], step[1])
-            return False 
-        return False 
+            return False
+        return False
 
     def find_nearest_tile(self, controller: RobotController, bot_x: int, bot_y: int, tile_name: str) -> Optional[Tuple[int, int]]:
         best_dist = 9999
@@ -66,10 +66,10 @@ class BotPlayer:
     def play_turn(self, controller: RobotController):
         my_bots = controller.get_team_bot_ids()
         if not my_bots: return
-    
+
         self.my_bot_id = my_bots[0]
         bot_id = self.my_bot_id
-        
+
         bot_info = controller.get_bot_state(bot_id)
         bx, by = bot_info['x'], bot_info['y']
 
@@ -190,14 +190,14 @@ class BotPlayer:
 
                         #trash
                         if controller.take_from_pan(bot_id, kx, ky):
-                            self.state = 16 
+                            self.state = 16
                 else:
                     if bot_info.get('holding'):
                         #trash
                         self.state = 16
                     else:
                         #restart
-                        self.state = 2 
+                        self.state = 2
 
         #state 13: add meat to plate
         elif self.state == 13:
@@ -230,7 +230,7 @@ class BotPlayer:
         for i in range(1, len(my_bots)):
             self.my_bot_id = my_bots[i]
             bot_id = self.my_bot_id
-            
+
             bot_info = controller.get_bot_state(bot_id)
             bx, by = bot_info['x'], bot_info['y']
 
