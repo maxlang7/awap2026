@@ -337,6 +337,9 @@ class BotPlayer:
         elif self.state == TRASH:
             self.do_trash(controller, bot_id, bx, by)
 
+        #------------------------
+        # BOT 2 ACTIONS
+
         self.my_bot_id = my_bots[1]
         bot_id = self.my_bot_id
 
