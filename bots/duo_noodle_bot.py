@@ -38,6 +38,7 @@ class BotPlayer:
         return None
 
     def move_towards(self, controller: RobotController, bot_id: int, target_x: int, target_y: int) -> bool:
+        # test
         bot_state = controller.get_bot_state(bot_id)
         bx, by = bot_state['x'], bot_state['y']
         def is_adjacent_to_target(x, y, tile):
