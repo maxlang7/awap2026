@@ -100,8 +100,15 @@ class BotPlayer:
         cx, cy = self.assembly_counter
         kx, ky = self.cooker_loc
 
+<<<<<<< HEAD
         if self.state in [BUY_M, BUY_P, BUY_N] and bot_info.get('holding'):
             self.state = TRASH
+=======
+        # Preliminary check If the bot is holding something unexpected during
+        # -states 2, 8, or 10 (when it should buy items), it goes to trash state to clear its hands.
+        if self.state in [2, 8, 10] and bot_info.get('holding'):
+            self.state = 16
+>>>>>>> 1d8ed89398682aae1b3fc54baa28fca74deb2843
 
         #state 0: init + checking the pan
         if self.state == INIT:
@@ -239,9 +246,15 @@ class BotPlayer:
             tx, ty = trash_pos
             if self.move_towards(controller, bot_id, tx, ty):
                 if controller.trash(bot_id, tx, ty):
+<<<<<<< HEAD
                     self.state = BUY_M #restart
 
 
+=======
+                    self.state = 2 #restart
+
+        # What should we do with additional bots?
+>>>>>>> 1d8ed89398682aae1b3fc54baa28fca74deb2843
         for i in range(1, len(my_bots)):
             self.my_bot_id = my_bots[i]
             bot_id = self.my_bot_id
