@@ -2,8 +2,6 @@ import random
 from collections import deque
 from typing import Tuple, Optional, List
 
-
-import sys
 import time
 
 from game_constants import Team, TileType, FoodType, ShopCosts
@@ -31,8 +29,8 @@ class BotPlayer:
         self.cooker_loc = None
         self.my_bot_id = None
         self.state = INIT
-        self.current_order = None
-    # ===== STATE EXECUTION METHODS =====
+
+    # ===== INITIALIZATION =====
 
     def do_init(self, controller: RobotController, bot_id: int, kx: int, ky: int):
         """State 0: init + checking the pan"""
@@ -41,6 +39,8 @@ class BotPlayer:
             self.state = BUY_M
         else:
             self.state = BUY_PAN
+
+    # ===== KITCHEN SETUP PHASE =====
 
     def do_buy_pan(self, controller: RobotController, bot_id: int,
                     bot_info: dict, bx: int, by: int, kx: int, ky: int):
@@ -58,6 +58,8 @@ class BotPlayer:
             if self.move_towards(controller, bot_id, sx, sy):
                 if controller.get_team_money(controller.get_team()) >= ShopCosts.PAN.buy_cost:
                     controller.buy(bot_id, ShopCosts.PAN, sx, sy)
+
+    # ===== MEAT PREPARATION PHASE =====
 
     def do_buy_meat(self, controller: RobotController, bot_id: int,
                      bx: int, by: int):
@@ -90,6 +92,8 @@ class BotPlayer:
             if controller.pickup(bot_id, cx, cy):
                 self.state = MEAT_IN_PAN
 
+    # ===== COOKING PHASE =====
+
     def do_meat_to_pan(self, controller: RobotController, bot_id: int,
                         kx: int, ky: int):
         """State 6: put meat in pan"""
@@ -97,6 +101,30 @@ class BotPlayer:
             # Using the NEW logic where place() starts cooking automatically
             if controller.place(bot_id, kx, ky):
                 self.state = BUY_P
+
+    def do_wait_meat(self, controller: RobotController, bot_id: int,
+                      bot_info: dict, kx: int, ky: int):
+        """State 11: wait and take meat"""
+        if self.move_towards(controller, bot_id, kx, ky):
+            tile = controller.get_tile(controller.get_team(), kx, ky)
+            if tile and isinstance(tile.item, Pan) and tile.item.food:
+                food = tile.item.food
+                if food.cooked_stage == 1:
+                    if controller.take_from_pan(bot_id, kx, ky):
+                        self.state = M_TO_P
+                elif food.cooked_stage == 2:
+                    # trash
+                    if controller.take_from_pan(bot_id, kx, ky):
+                        self.state = TRASH
+            else:
+                if bot_info.get('holding'):
+                    # trash
+                    self.state = TRASH
+                else:
+                    # restart
+                    self.state = BUY_M
+
+    # ===== PLATE PREPARATION PHASE =====
 
     def do_buy_plate(self, controller: RobotController, bot_id: int,
                       bx: int, by: int):
@@ -132,27 +160,7 @@ class BotPlayer:
             if controller.add_food_to_plate(bot_id, cx, cy):
                 self.state = WAIT_FOR_M
 
-    def do_wait_meat(self, controller: RobotController, bot_id: int,
-                      bot_info: dict, kx: int, ky: int):
-        """State 11: wait and take meat"""
-        if self.move_towards(controller, bot_id, kx, ky):
-            tile = controller.get_tile(controller.get_team(), kx, ky)
-            if tile and isinstance(tile.item, Pan) and tile.item.food:
-                food = tile.item.food
-                if food.cooked_stage == 1:
-                    if controller.take_from_pan(bot_id, kx, ky):
-                        self.state = M_TO_P
-                elif food.cooked_stage == 2:
-                    # trash
-                    if controller.take_from_pan(bot_id, kx, ky):
-                        self.state = TRASH
-            else:
-                if bot_info.get('holding'):
-                    # trash
-                    self.state = TRASH
-                else:
-                    # restart
-                    self.state = BUY_M
+    # ===== DISH ASSEMBLY PHASE =====
 
     def do_meat_to_plate(self, controller: RobotController, bot_id: int,
                           cx: int, cy: int):
@@ -167,6 +175,8 @@ class BotPlayer:
         if self.move_towards(controller, bot_id, cx, cy):
             if controller.pickup(bot_id, cx, cy):
                 self.state = SUBMIT_DISH
+
+    # ===== COMPLETION & ERROR HANDLING =====
 
     def do_submit(self, controller: RobotController, bot_id: int,
                    bx: int, by: int):
@@ -248,24 +258,13 @@ class BotPlayer:
                         best_pos = (x, y)
         return best_pos
 
-
-    def get_first_priority_order(self, orders):
-        # Reorders the list of dictionaries inside orders to priorize which ones to work in what order
-        #for order in orders:
-            return None
     def play_turn(self, controller: RobotController):
-        team=controller.get_team()
         # For testing
-        time.sleep(0.1)
-        my_bots = controller.get_team_bot_ids(team)
+        time.sleep(0.3)
+        my_bots = controller.get_team_bot_ids(controller.get_team())
         if not my_bots:
             return
-            
-        if self.current_order == None:
-            orders = controller.get_orders(team)
-            self.current_order = get_first_priority_order(orders)
 
-        # Bot 1
         self.my_bot_id = my_bots[0]
         bot_id = self.my_bot_id
 
@@ -350,22 +349,21 @@ class BotPlayer:
         elif self.state == TRASH:
             self.do_trash(controller, bot_id, bx, by)
 
-        #------------------------
-        # BOT 2 ACTIONS
+        # Control second bot (simple back-and-forth movement)
+        if len(my_bots) > 1:
+            self.my_bot_id = my_bots[1]
+            bot_id = self.my_bot_id
 
-        self.my_bot_id = my_bots[1]
-        bot_id = self.my_bot_id
+            bot_info = controller.get_bot_state(bot_id)
+            bx, by = bot_info['x'], bot_info['y']
 
-        bot_info = controller.get_bot_state(bot_id)
-        bx, by = bot_info['x'], bot_info['y']
+            dy = 0
+            if controller.get_turn() % 2 == 0:
+                dx = 1
+            else:
+                dx = -1
 
-        dy = 0
-        if controller.get_turn() % 2 == 0:
-            dx = 1
-        else:
-            dx = -1
-
-        nx, ny = bx + dx, by + dy
-        if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
-            controller.move(bot_id, dx, dy)
-            return
+            nx, ny = bx + dx, by + dy
+            if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
+                controller.move(bot_id, dx, dy)
+                return
