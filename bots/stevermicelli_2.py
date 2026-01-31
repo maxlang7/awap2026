@@ -2,6 +2,8 @@ import random
 from collections import deque
 from typing import Tuple, Optional, List
 
+
+import sys
 import time
 
 from game_constants import Team, TileType, FoodType, ShopCosts
@@ -245,14 +247,25 @@ class BotPlayer:
                         best_dist = dist
                         best_pos = (x, y)
         return best_pos
-
+    
+    
+    def getFirstPriorityOrder(self, orders):
+        # Reorders the list of dictionaries inside orders to priorize which ones to work in what order
+        for order in orders:
+            return None
     def play_turn(self, controller: RobotController):
+        team=controller.get_team()
         # For testing
-        time.sleep(0.3)
-        my_bots = controller.get_team_bot_ids(controller.get_team())
+        time.sleep(0.1)
+        my_bots = controller.get_team_bot_ids(team)
         if not my_bots:
             return
 
+        # Get orders
+        orders = controller.get_orders(team)
+        currentOrder = getFirstPriorityOrder(orders)
+        
+        # Bot 1
         self.my_bot_id = my_bots[0]
         bot_id = self.my_bot_id
 
