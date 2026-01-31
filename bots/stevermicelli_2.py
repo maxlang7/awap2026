@@ -29,7 +29,7 @@ class BotPlayer:
         self.cooker_loc = None
         self.my_bot_id = None
         self.state = INIT
-
+        self.current_order = None
     # ===== INITIALIZATION =====
 
     def do_init(self, controller: RobotController, bot_id: int, kx: int, ky: int):
@@ -258,13 +258,19 @@ class BotPlayer:
                         best_pos = (x, y)
         return best_pos
 
+    def get_first_priority_order(self, orders):
+        return None
+
     def play_turn(self, controller: RobotController):
         # For testing
         time.sleep(0.3)
         my_bots = controller.get_team_bot_ids(controller.get_team())
         if not my_bots:
             return
-
+        
+        if self.current_order == None:
+            orders = controller.get_orders(controller.get_team())
+            self.current_order = self.get_first_priority_order(orders)
         self.my_bot_id = my_bots[0]
         bot_id = self.my_bot_id
 
@@ -350,20 +356,19 @@ class BotPlayer:
             self.do_trash(controller, bot_id, bx, by)
 
         # Control second bot (simple back-and-forth movement)
-        if len(my_bots) > 1:
-            self.my_bot_id = my_bots[1]
-            bot_id = self.my_bot_id
+        self.my_bot_id = my_bots[1]
+        bot_id = self.my_bot_id
 
-            bot_info = controller.get_bot_state(bot_id)
-            bx, by = bot_info['x'], bot_info['y']
+        bot_info = controller.get_bot_state(bot_id)
+        bx, by = bot_info['x'], bot_info['y']
 
-            dy = 0
-            if controller.get_turn() % 2 == 0:
-                dx = 1
-            else:
-                dx = -1
+        dy = 0
+        if controller.get_turn() % 2 == 0:
+            dx = 1
+        else:
+            dx = -1
 
-            nx, ny = bx + dx, by + dy
-            if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
-                controller.move(bot_id, dx, dy)
-                return
+        nx, ny = bx + dx, by + dy
+        if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
+            controller.move(bot_id, dx, dy)
+            return
