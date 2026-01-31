@@ -8,8 +8,8 @@ from item import Pan, Plate, Food
 
 # Global State Variables (N = Noodles, M = Meat, P = Plate):
 INIT, BUY_PAN, BUY_M, M_ON_COUNTER, CHOP_M = 0, 1, 2, 3, 4
-PICK_UP_CHOPPED_M, MEAT_IN_PAN, BUY_P, P_ON_COUNTER = 5, 6, 7, 8
-BUY_N, N_TO_P, WAIT_FOR_M, M_TO_P, PICK_UP_COMPLETE_P, SUBMIT_DISH, TRASH = 9, 10, 11, 12, 13, 14, 15
+PICK_UP_CHOPPED_M, MEAT_IN_PAN, BUY_P, P_ON_COUNTER, BUY_N = 5, 6, 7, 8, 9
+N_TO_P, WAIT_FOR_M, M_TO_P, PICK_UP_COMPLETE_P, SUBMIT_DISH, TRASH = 10, 11, 12, 13, 14, 15
 
 class BotPlayer:
     def __init__(self, map_copy):
