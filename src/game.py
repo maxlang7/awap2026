@@ -60,7 +60,7 @@ class Game:
         replay_path: Optional[str] = None,
         render: bool = False,
         turn_limit: int = GameConstants.TOTAL_TURNS,
-        per_turn_timeout_s: float = 0.05,
+        per_turn_timeout_s: float = 0.1,
         fps_cap: int = 30,
     ):
         self.render_enabled = render
@@ -232,7 +232,7 @@ class Game:
 
         red_money = self.game_state.get_team_money(Team.RED)
         blue_money = self.game_state.get_team_money(Team.BLUE)
-        
+
         print(f"[GAME OVER] money scores: RED=${red_money}, BLUE=${blue_money}")
 
         if red_money > blue_money:
@@ -256,7 +256,7 @@ class Game:
             "winner": None if winner is None else winner.name,
             "turns": len(self.replay),
             "switch_turn_start": self.game_state.switch_turn,
-            "switch_turn_end": self.game_state.switch_turn + self.game_state.switch_duration, 
+            "switch_turn_end": self.game_state.switch_turn + self.game_state.switch_duration,
             "replay": self.replay,
         }
         with open(self.replay_path, "w", encoding="utf-8") as f:
