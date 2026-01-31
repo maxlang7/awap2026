@@ -31,7 +31,7 @@ class BotPlayer:
         self.cooker_loc = None
         self.my_bot_id = None
         self.state = INIT
-
+        self.current_order = None
     # ===== STATE EXECUTION METHODS =====
 
     def do_init(self, controller: RobotController, bot_id: int, kx: int, ky: int):
@@ -247,11 +247,11 @@ class BotPlayer:
                         best_dist = dist
                         best_pos = (x, y)
         return best_pos
-    
-    
-    def getFirstPriorityOrder(self, orders):
+
+
+    def get_first_priority_order(self, orders):
         # Reorders the list of dictionaries inside orders to priorize which ones to work in what order
-        for order in orders:
+        #for order in orders:
             return None
     def play_turn(self, controller: RobotController):
         team=controller.get_team()
@@ -260,11 +260,11 @@ class BotPlayer:
         my_bots = controller.get_team_bot_ids(team)
         if not my_bots:
             return
+            
+        if self.current_order == None:
+            orders = controller.get_orders(team)
+            self.current_order = get_first_priority_order(orders)
 
-        # Get orders
-        orders = controller.get_orders(team)
-        currentOrder = getFirstPriorityOrder(orders)
-        
         # Bot 1
         self.my_bot_id = my_bots[0]
         bot_id = self.my_bot_id
