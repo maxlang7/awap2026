@@ -1,6 +1,8 @@
 import random
 from collections import deque
 from typing import Tuple, Optional, List
+import sys
+
 
 import time
 
@@ -25,12 +27,26 @@ TRASH = 15
 class BotPlayer:
     def __init__(self, map_copy):
         self.map = map_copy
-        self.assembly_counter = None
-        self.cooker_loc = None
-        self.my_bot_id = None
-        self.state = INIT
-        self.current_order = None
-    # ===== INITIALIZATION =====
+
+        self.bot_1_tasks = None
+        self.bot_2_tasks = None
+        self.bot_1_current_task = None
+        self.bot_2_current_task = None
+
+        self.counter_x, self.counter_y = self.find_nearest_tile(self.map, 0, 0, "COUNTER")
+        # Base location where we find everything else from
+        x,y=self.counter_x,self.counter_y
+
+        self.cooker_x, self.cooker_y = self.find_nearest_tile(self.map, x, y, "COOKER")
+        self.submit_x, self.submit_y = self.find_nearest_tile(self.map, x, y, "SUBMIT")
+        self.shop_x, self.shop_y = self.find_nearest_tile(self.map, x, y, "SHOP")
+        self.box_x, self.box_y = self.find_nearest_tile(self.map, x, y, "BOX")
+
+
+
+
+
+         # ===== INITIALIZATION =====
 
     def do_init(self, controller: RobotController, bot_id: int, kx: int, ky: int):
         """State 0: init + checking the pan"""
@@ -243,11 +259,11 @@ class BotPlayer:
 
         return False
 
-    def find_nearest_tile(self, controller: RobotController, bot_x: int, bot_y: int,
+    def find_nearest_tile(self, map, bot_x: int, bot_y: int,
                          tile_name: str) -> Optional[Tuple[int, int]]:
         best_dist = 9999
         best_pos = None
-        m = controller.get_map(controller.get_team())
+        m = map
         for x in range(m.width):
             for y in range(m.height):
                 tile = m.tiles[x][y]
@@ -258,22 +274,39 @@ class BotPlayer:
                         best_pos = (x, y)
         return best_pos
 
-    def get_first_priority_order(self, orders):
-        return None
+    # def get_ingredients_cost(self, ingredients):
+    #     cost=0
+    #     num_cooked = 0
+    #     num_chopped = 0
+    #     num_cooked_and_chopped = 0
+    #     for ingredient in ingredients:
+    #         if ingredient == "ONION":
+    #             cost+=30
+    #             num_chopped+=1
+    #         elif ingredient == "EGG":
+    #             cost+=20
+    #             num_cooked+=1
+    #         elif ingredient == "MEAT":
+    #             cost+=80
+    #             num_cooked_and_chopped+=1
+    #         elif ingredient == "NOODLES":
+    #             cost+=40
+    #         elif ingredient == "SAUCE":
+    #             cost+=10
+    #     return cost, num_cooked, num_chopped, num_cooked_and_chopped
 
-    def play_turn(self, controller: RobotController):
-        # For testing
-        time.sleep(0.3)
-        my_bots = controller.get_team_bot_ids(controller.get_team())
-        if not my_bots:
-            return
-        
-        if self.current_order == None:
-            orders = controller.get_orders(controller.get_team())
-            self.current_order = self.get_first_priority_order(orders)
-        self.my_bot_id = my_bots[0]
-        bot_id = self.my_bot_id
 
+    # def get_expected_value(self, order):
+    #     ingredient_cost = self.get_ingredients_cost(order['required'])
+    #     total_time = time_to_chop+time_to_cook+time_for_meat+
+    #     return ingredient_cost, total_time
+
+    # def prioritize_orders(self, orders):
+    #     for order in orders:
+    #         order['expected_value'] = self.get_expected_value(order)
+
+    def do_first_bot_turn(self, controller):
+        bot_id=controller.get_team_bot_ids(controller.get_team())[0]
         bot_info = controller.get_bot_state(bot_id)
         bx, by = bot_info['x'], bot_info['y']
 
@@ -288,79 +321,21 @@ class BotPlayer:
         cx, cy = self.assembly_counter
         kx, ky = self.cooker_loc
 
-        if self.state in [BUY_M, BUY_P, BUY_N] and bot_info.get('holding'):
-            self.state = TRASH
-
-        # State 0: init + checking the pan
-        if self.state == INIT:
-            self.do_init(controller, bot_id, kx, ky)
-
-        # State 1: buy pan
-        elif self.state == BUY_PAN:
-            self.do_buy_pan(controller, bot_id, bot_info, bx, by, kx, ky)
-
-        # State 2: buy meat
-        elif self.state == BUY_M:
-            self.do_buy_meat(controller, bot_id, bx, by)
-
-        # State 3: put meat on counter
-        elif self.state == M_ON_COUNTER:
-            self.do_place_meat(controller, bot_id, cx, cy)
-
-        # State 4: chop meat
-        elif self.state == CHOP_M:
-            self.do_chop_meat(controller, bot_id, cx, cy)
-
-        # State 5: pickup meat
-        elif self.state == PICK_UP_CHOPPED_M:
-            self.do_pickup_meat(controller, bot_id, cx, cy)
-
-        # State 6: put meat in pan
-        elif self.state == MEAT_IN_PAN:
-            self.do_meat_to_pan(controller, bot_id, kx, ky)
-
-        # State 7: buy the plate
-        elif self.state == BUY_P:
-            self.do_buy_plate(controller, bot_id, bx, by)
-
-        # State 8: put the plate on the counter
-        elif self.state == P_ON_COUNTER:
-            self.do_place_plate(controller, bot_id, cx, cy)
-
-        # State 9: buy noodle
-        elif self.state == BUY_N:
-            self.do_buy_noodles(controller, bot_id, bx, by)
-
-        # State 10: add noodles to plate
-        elif self.state == N_TO_P:
-            self.do_noodles_to_plate(controller, bot_id, cx, cy)
-
-        # State 11: wait and take meat
-        elif self.state == WAIT_FOR_M:
-            self.do_wait_meat(controller, bot_id, bot_info, kx, ky)
-
-        # State 12: add meat to plate
-        elif self.state == M_TO_P:
-            self.do_meat_to_plate(controller, bot_id, cx, cy)
-
-        # State 13: pick up the plate
-        elif self.state == PICK_UP_COMPLETE_P:
-            self.do_pickup_plate(controller, bot_id, cx, cy)
-
-        # State 14: submit
-        elif self.state == SUBMIT_DISH:
-            self.do_submit(controller, bot_id, bx, by)
-
-        # State 15: trash
-        elif self.state == TRASH:
-            self.do_trash(controller, bot_id, bx, by)
-
-        # Control second bot (simple back-and-forth movement)
-        self.my_bot_id = my_bots[1]
-        bot_id = self.my_bot_id
-
+    def do_second_bot_turn(self, controller):
+        bot_id=controller.get_team_bot_ids(controller.get_team())[1]
         bot_info = controller.get_bot_state(bot_id)
         bx, by = bot_info['x'], bot_info['y']
+
+        if self.assembly_counter is None:
+            self.assembly_counter = self.find_nearest_tile(controller, bx, by, "COUNTER")
+        if self.cooker_loc is None:
+            self.cooker_loc = self.find_nearest_tile(controller, bx, by, "COOKER")
+
+        if not self.assembly_counter or not self.cooker_loc:
+            return
+
+        cx, cy = self.assembly_counter
+        kx, ky = self.cooker_loc
 
         dy = 0
         if controller.get_turn() % 2 == 0:
@@ -372,3 +347,184 @@ class BotPlayer:
         if controller.get_map(controller.get_team()).is_tile_walkable(nx, ny):
             controller.move(bot_id, dx, dy)
             return
+
+    def get_tasks(self,orders):
+        bot_1_tasks=[]
+        bot_2_tasks=[]
+        onion_1_tasks=["go_store", "buy_onion", "go_counter", "place_counter", "chop"]
+        meat_1_tasks=["go_store", "buy_meat", "go_counter", "place_counter", "chop", "pickup_counter", "go_cooker", "cook", "go_store"]
+        egg_1_tasks=["go_store", "buy_egg", "go_cooker", "cook"]
+
+        move_2_tasks = ["go_box", "go_box", "place_box", "place_box"]
+        onion_2_tasks=["go_counter", "pickup_counter"] + move_2_tasks
+        meat_2_tasks=["go_cooker", "go_cooker", "pickup_cooker"] + move_2_tasks
+        egg_2_tasks=meat_2_tasks
+
+        noodles_2_tasks = ["go_store", "buy_noodles", "go_box", "place_box"]
+        sauce_2_tasks = ["go_store", "buy_sauce", "go_box", "place_box"]
+
+        submit_2_tasks = ["go_store", "buy_plate", "go_box"]
+        for order in orders:
+            onion_count=order['required'].count("ONION")
+            meat_count=order['required'].count("MEAT")
+            egg_count=order['required'].count("EGG")
+            noodles_count=order['required'].count("NOODLES")
+            sauce_count =order['required'].count("SAUCE")
+            total_ingredients = meat_count+egg_count+noodles_count+sauce_count+onion_count
+
+            for _ in range(onion_count):
+                bot_1_tasks+=onion_1_tasks
+                bot_2_tasks+=onion_2_tasks
+            for _ in range(meat_count):
+                bot_1_tasks+=meat_1_tasks
+                bot_2_tasks+=meat_2_tasks
+            for _ in range(egg_count):
+                bot_1_tasks+=egg_1_tasks
+                bot_2_tasks+=egg_2_tasks
+            for _ in range(noodles_count):
+                bot_2_tasks+=noodles_2_tasks
+            for _ in range(sauce_count):
+                bot_2_tasks+=sauce_2_tasks
+            bot_2_tasks += submit_2_tasks + ["pickup_box"]*(total_ingredients) + ["go_submit"] + ["place_submit"]
+
+        return self.reorder_tasks(bot_1_tasks, bot_2_tasks)
+
+    def reorder_tasks(tasks1,tasks2):
+        
+    def play_turn(self, controller: RobotController):
+        # For testing
+        #time.sleep(0.1)
+       # print(f"Bot 1 tasks: {self.bot_1_tasks}")
+        print(f"Bot 2 tasks: {self.bot_2_tasks}")
+
+        #print(self.bot_1_current_task)
+
+        team = controller.get_team()
+
+        bot_1_id = controller.get_team_bot_ids(team)[0]
+        bot_2_id = controller.get_team_bot_ids(team)[1]
+
+        orders = controller.get_orders(team)
+        # Prioritize Orders???
+
+        # Get Tasks for both bots
+        if self.bot_1_tasks is None and self.bot_2_tasks is None:
+            bot_1_order_tasks, bot_2_order_tasks = self.get_tasks(orders)
+            init_tasks = [] #["go_store", "buy_pan", "go_cooker", "place_cooker"]
+            self.bot_1_tasks = init_tasks + bot_1_order_tasks
+            self.bot_2_tasks = init_tasks + bot_2_order_tasks
+
+        # BOT 1 LOGIC
+        if self.bot_1_tasks:
+            if self.bot_1_current_task is None:
+                self.bot_1_current_task = self.bot_1_tasks[0]
+
+            task = self.bot_1_current_task
+            task_done = False
+            if task == "go_store":
+                if self.move_towards(controller, bot_1_id, self.shop_x, self.shop_y):
+                    task_done = True
+            elif task == "go_cooker":
+                if self.move_towards(controller, bot_1_id, self.cooker_x, self.cooker_y):
+                    task_done = True
+            elif task == "go_counter":
+                if self.move_towards(controller, bot_1_id, self.counter_x, self.counter_y):
+                    task_done = True
+            elif task == "buy_onion":
+                if controller.buy(bot_1_id, FoodType.ONION, self.shop_x, self.shop_y):
+                    task_done = True
+            elif task == "buy_meat":
+                if controller.buy(bot_1_id, FoodType.MEAT, self.shop_x, self.shop_y):
+                    task_done = True
+            elif task == "buy_egg":
+                if controller.buy(bot_1_id, FoodType.EGG, self.shop_x, self.shop_y):
+                    task_done = True
+            elif task == "buy_pan":
+                if controller.buy(bot_1_id, ShopCosts.PAN, self.shop_x, self.shop_y):
+                    task_done = True
+            elif task == "chop":
+                if controller.chop(bot_1_id, self.counter_x, self.counter_y):
+                    task_done = True
+            elif task == "cook":
+                if controller.place(bot_1_id, self.cooker_x, self.cooker_y):
+                    task_done = True
+            elif task == "place_counter":
+                if controller.place(bot_1_id, self.counter_x, self.counter_y):
+                    task_done = True
+            elif task == "place_box":
+                if controller.place(bot_1_id, self.box_x, self.box_y):
+                    task_done = True
+            elif task == "pickup_counter":
+                if controller.pickup(bot_1_id, self.counter_x, self.counter_y):
+                    task_done = True
+            elif task == "pickup_cooker":
+                if controller.pickup(bot_1_id, self.cooker_x, self.cooker_y):
+                    task_done = True
+
+            if task_done:
+                self.bot_1_tasks.pop(0)
+                self.bot_1_current_task = None
+
+        # BOT 2 LOGIC
+        if self.bot_2_tasks:
+            if self.bot_2_current_task is None:
+                popped=self.bot_2_tasks.pop(0)
+                print(popped)
+                self.bot_2_current_task = self.bot_2_tasks[0]
+
+            task = self.bot_2_current_task
+            #print(task)
+            task_done = False
+            if task == "go_store":
+                if self.move_towards(controller, bot_2_id, self.shop_x, self.shop_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "go_cooker":
+                print("go_cooker!!")
+                if self.move_towards(controller, bot_2_id, self.cooker_x, self.cooker_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "go_submit":
+                if self.move_towards(controller, bot_2_id, self.submit_x, self.submit_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "submit":
+                if controller.place(bot_2_id, self.submit_x, self.submit_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "go_counter":
+                if self.move_towards(controller, bot_2_id, self.counter_x, self.counter_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "go_box":
+                if self.move_towards(controller, bot_2_id, self.box_x, self.box_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "place_box":
+                if controller.place(bot_2_id, self.box_x, self.box_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "pickup_box":
+                if controller.pickup(bot_2_id, self.box_x, self.box_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            elif task == "pickup_counter":
+                if controller.pickup(bot_2_id, self.counter_x, self.counter_y):
+                    print(f"Did task:{task}")
+                    task_done = True
+            #print(task)
+            elif task == "pickup_cooker":
+                tile = controller.get_tile(team, self.cooker_x, self.cooker_y)
+                if tile and isinstance(tile.item, Pan) and tile.item.food and tile.item.food.cooked_stage == 1:
+                    print("DEBUG: Meat is cooked, trying to take from pan.")
+                    if controller.take_from_pan(bot_2_id, self.cooker_x, self.cooker_y):
+                        task_done = True
+
+
+            if task_done:
+                print("task done")
+                self.bot_2_tasks.pop(0)
+                self.bot_2_current_task = None
+
+        if not self.bot_1_tasks and not self.bot_2_tasks:
+            print("Nothing to do")
